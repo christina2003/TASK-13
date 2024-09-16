@@ -1,8 +1,11 @@
 import cv2 as cv
-import time
+from time import time
 import pyautogui as gui
 
 text_height = 100
+current_time = 0
+counter_start = 0
+counter_end = 0
 
 def draw_grid(frame) :
    
@@ -18,6 +21,7 @@ def draw_grid(frame) :
 
 def draw_o(frame, center_x, center_y):
     cv.circle(frame, (center_x,center_y), 50, (255,200,0), thickness=3)
+    win_check()
 
 def draw_x(frame, center_x, center_y):
     size = 70
@@ -29,14 +33,44 @@ def draw_x(frame, center_x, center_y):
 
     cv.line(frame, top_left, bottom_right, (255,200,0), thickness=4)
     cv.line(frame, top_right, bottom_left, (255,200,0), thickness=4)
+    win_check()
 
 def print_text(frame, text):
-    cv.putText(frame, text, (50,50), cv.FONT_HERSHEY_TRIPLEX, 1.0, (100,50,100), 2)
+    cv.putText(frame, text, (300,50), cv.FONT_HERSHEY_TRIPLEX, 1.0, (100,50,100), 2)
 
 def print_timer(frame, start):
-    timer = int(time.time()) - start
-    cv.putText(frame, f"{timer}",(50,50), cv.FONT_HERSHEY_COMPLEX, 2, (0,0,255), 3)
+    global current_time
+    current_time = int(time()) - start
+    cv.putText(frame, f"{current_time}",(50,50), cv.FONT_HERSHEY_COMPLEX, 2, (0,0,255), 3)
     return frame, start
+
+def count_down(frame):
+    global current_time, counter_start, counter_end
+    if counter_start == 0:
+        counter_start = current_time
+        counter_end = counter_start + 5
+        return False
+    if time() >= counter_end:
+        print("continue here")
+        #take input from model
+        counter_start = 0
+        return True
+    else:
+        print_text(frame, f"{counter_end - time()}")
+        return False
+
+
+def turn(frame, Is_player1):
+    if Is_player1:
+        print_text(frame, f"Player1, GET READY!")
+        condition = count_down(frame)
+    else:
+        print_text(frame, f"Player2, GET READY!")
+        condition = count_down(frame)
+    if condition:
+        return not(Is_player1)
+    else:
+        return Is_player1
 
 def end(player):
     if player:
@@ -46,16 +80,16 @@ def end(player):
 
 def win_check():
     for i in range(3):
-        if pin[i][0][2] == pin[i][1][2] == pin[i][2][2]:
+        if pin[i][0][2] == pin[i][1][2] == pin[i][2][2] != 0:
             end(pin[i][0][2])
             break
-        elif pin[0][i][2] == pin[1][i][2] == pin[2][i][2]:
+        elif pin[0][i][2] == pin[1][i][2] == pin[2][i][2] != 0:
             end(pin[0][i][2])
             break
     else:
-        if pin[0][0][2] == pin[1][1][2] == pin[2][2][2]:
+        if pin[0][0][2] == pin[1][1][2] == pin[2][2][2] != 0:
             end(pin[1][1][2])
-        elif pin[2][0][2] == pin[1][1][2] == pin[0][2][2]:
+        elif pin[2][0][2] == pin[1][1][2] == pin[0][2][2] != 0:
             end(pin[1][1][2])
 
 cap = cv.VideoCapture(0) 
@@ -82,7 +116,8 @@ pin = [
     [middle_left, middle_center, middle_left],
     [bottom_left, bottom_center, bottom_right]
 ]
-start = int(time.time())
+start = int(time())
+Is_player1 = True
 while True:
     isTrue, frame = cap.read() #read the frames from the video
     if isTrue: # if there is a frame
@@ -94,7 +129,7 @@ while True:
         frame, start = print_timer(cv.flip(frame,1), start)
 
         # game logic is here
-        
+        Is_player1 = turn(frame, Is_player1)
         # display the video
         cv.imshow("video",frame)
 
