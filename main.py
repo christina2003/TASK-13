@@ -77,7 +77,7 @@ def draw_x(frame, center_x, center_y, player):
     win_check()
 
 def print_text(frame, text):
-    cv.putText(frame, text, (50,50), cv.FONT_HERSHEY_TRIPLEX, 1.0, (100,50,100), 2)
+    cv.putText(frame, text, (400,50), cv.FONT_HERSHEY_COMPLEX, 1, (0,0,255), 3)
 
 def print_timer(frame, start):
     global current_time
@@ -89,23 +89,23 @@ def count_down(frame):
     global current_time, counter_start, counter_end
     if counter_start == 0:
         counter_start = current_time
-        counter_end = counter_start + 5
+        counter_end = counter_start + 2
         return False
     if (current_time) >= counter_end:
         counter_start = 0
-        print(time())
         return True
     else:
-        print_text(frame, f"{counter_end - time()}")
+        to_print = counter_end - int(time())
+        #print_text(frame, f"{to_print}")
         return False
 
 
 def turn(frame, Is_player1):
     if Is_player1:
-        print_text(frame, f"Player1, GET READY!")
+        cv.putText(frame, "Player1, GET READY!", (150,50), cv.FONT_HERSHEY_COMPLEX, 1, (0,0,255), 3)
         condition = count_down(frame)
     else:
-        print_text(frame, f"Player2, GET READY!")
+        cv.putText(frame, "Player2, GET READY!", (150,50), cv.FONT_HERSHEY_COMPLEX, 1, (0,0,255), 3)
         condition = count_down(frame)
     if condition:
         return not(Is_player1), True
@@ -165,7 +165,6 @@ pin = [
 
 def predict():
     #if (current_time - last_prediction_time)>=2:
-            print("prediction")
             results = model.predict(
             source=raw_flipped_frame, save=True, imgsz=640, conf=0.8
             )
@@ -205,13 +204,8 @@ while True:
         flipped_frame = cv.flip(frame, 1)  # Flip frame for display only
         raw_flipped_frame = flipped_frame.copy() # used by model without any drawing
         draw_grid(flipped_frame)
-        # testing the functions
-        #draw_o(flipped_frame,top_right[0],top_right[1])
-        #draw_x(flipped_frame, bottom_center[0], bottom_center[1])
         flipped_frame, start = print_timer(flipped_frame, start)
-
-        # prediction code
-        Is_player1, condition = turn(frame, Is_player1)
+        Is_player1, condition = turn(flipped_frame, Is_player1)
         x = -1
         y = -1
         player = True
@@ -221,11 +215,7 @@ while True:
         draw_o(flipped_frame,x,y, player)
 
                             
-                    #------------------------------------------------                    
-        # game logic is here
-        # display the video
         cv.imshow("video",flipped_frame)
-        #current_time = time()
 
     if cv.waitKey(20) & 0xFF==ord("q"):
         break
