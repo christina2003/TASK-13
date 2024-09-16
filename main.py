@@ -1,5 +1,5 @@
 import cv2 as cv
-from time import time
+from time import time, sleep
 import pyautogui as gui
 from ultralytics import YOLO
 model = YOLO("/media/zeyad/DiskE/VSprojects/TASK-13/best.pt")
@@ -41,41 +41,43 @@ def draw_grid(frame) :
         (200, 255, 100),
         thickness=3,
     )
-def draw_o(frame, center_x, center_y):
+def draw_o(frame, center_x, center_y, player):
     global pin
     global box_width
     global box_height
     for row in pin:
         for box in row:
             if (center_x <= (box[0] + (box_width / 2))) and (center_x >= (box[0] - (box_width / 2))):
-                if (center_y <= (box[1] + (box_height / 2))) and (center_y >= (box[1] - (box_height / 2))):
-                    box[2] = 2
+                if (center_y <= (box[1] + (box_height / 2))) and (center_y >= (box[1] - (box_height / 2))) and (not player):
+                    if box[2] != 1:
+                        box[2] = 2
             if box[2] == 2:
                 cv.circle(frame, (box[0],box[1]), 50, (255,200,0), thickness=3)
     win_check()
 
 
-def draw_x(frame, center_x, center_y):
+def draw_x(frame, center_x, center_y, player):
     global pin
     size = 70
     for row in pin:
         for box in row:
             if (center_x <= (box[0] + (box_width / 2))) and (center_x >= (box[0] - (box_width / 2))):
-                if (center_y <= (box[1] + (box_height / 2))) and (center_y >= (box[1] - (box_height / 2))):
-                    box[2] = 1
+                if (center_y <= (box[1] + (box_height / 2))) and (center_y >= (box[1] - (box_height / 2))) and player:
+                    if box[2] != 2:
+                        box[2] = 1
             if box[2] == 1:
-                top_left = (box[2] - size // 2, box[2] - size // 2)
-                bottom_right = (box[2] + size // 2, box[2] + size // 2)
+                top_left = (box[0] - size // 2, box[1] - size // 2)
+                bottom_right = (box[0] + size // 2, box[1] + size // 2)
 
-                top_right = (box[2] + size // 2, box[2] - size // 2)
-                bottom_left = (box[2] - size // 2, box[2] + size // 2)
+                top_right = (box[0] + size // 2, box[1] - size // 2)
+                bottom_left = (box[0] - size // 2, box[1] + size // 2)
 
                 cv.line(frame, top_left, bottom_right, (0,200,255), thickness=4)
                 cv.line(frame, top_right, bottom_left, (0,200,255), thickness=4)
     win_check()
 
 def print_text(frame, text):
-    cv.putText(frame, text, (300,50), cv.FONT_HERSHEY_TRIPLEX, 1.0, (100,50,100), 2)
+    cv.putText(frame, text, (50,50), cv.FONT_HERSHEY_TRIPLEX, 1.0, (100,50,100), 2)
 
 def print_timer(frame, start):
     global current_time
@@ -115,6 +117,9 @@ def end(player):
         print_text(frame, "player 2 wins!")
     else:
         print_text(frame, "player 1 wins!")
+    sleep(2)
+    cap.release()
+    cv.destroyAllWindows()
 
 def win_check():
     for i in range(3):
@@ -185,10 +190,12 @@ def predict():
                             # if name = x
             #last_prediction_time = current_time
             if i != 0:
-                print(name)
-                return int(x_center), int(y_center)
+                if name == 'x':
+                    return int(x_center), int(y_center), True
+                else:
+                    return int(x_center), int(y_center), False
             else:
-                return -1,-1
+                return -1,-1, True
 start = int(time())
 Is_player1 = True
 while True:
@@ -207,12 +214,11 @@ while True:
         Is_player1, condition = turn(frame, Is_player1)
         x = -1
         y = -1
+        player = True
         if condition:
-            x, y = predict()
-        if Is_player1:
-            draw_x(flipped_frame,x,y)
-        else:
-            draw_o(flipped_frame,x,y)
+            x, y, player = predict()
+        draw_x(flipped_frame,x,y, player)
+        draw_o(flipped_frame,x,y, player)
 
                             
                     #------------------------------------------------                    
