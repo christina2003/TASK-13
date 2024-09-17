@@ -2,12 +2,15 @@ import cv2 as cv
 from time import time, sleep
 import pyautogui as gui
 from ultralytics import YOLO
-model = YOLO("/media/zeyad/DiskE/VSprojects/TASK-13/best.pt")
+
+model = YOLO("best.pt")
 text_height = 100
 current_time = 0
 counter_start = 0
 counter_end = 0
 last_prediction_time = 0
+x_player1 = True
+
 def draw_grid(frame) :
    
     width = frame.shape[1]
@@ -100,23 +103,25 @@ def count_down(frame):
         return False
 
 
-def turn(frame, Is_player1):
-    if Is_player1:
-        cv.putText(frame, "Player1, GET READY!", (150,50), cv.FONT_HERSHEY_COMPLEX, 1, (0,0,255), 3)
-        condition = count_down(frame)
+def set_turn():
+    global x_player1
+    if x_player1:
+        x_player1 = False
     else:
-        cv.putText(frame, "Player2, GET READY!", (150,50), cv.FONT_HERSHEY_COMPLEX, 1, (0,0,255), 3)
-        condition = count_down(frame)
-    if condition:
-        return not(Is_player1), True
+        x_player1 = True
+
+def get_turn():
+    global x_player1, flipped_frame
+    if not x_player1:
+        cv.putText(flipped_frame, "O Player's Turn..", (200,50), cv.FONT_HERSHEY_COMPLEX, 1, (0,0,255), 3)
     else:
-        return Is_player1, False
+        cv.putText(flipped_frame, "X Player's Turn..", (200,50), cv.FONT_HERSHEY_COMPLEX, 1, (0,0,255), 3)
 
 def end(player):
     if player == 2:
-        print_text(frame, "player 2 wins!")
+        cv.putText(flipped_frame, "O Player's Turn..", (200,50), cv.FONT_HERSHEY_COMPLEX, 1, (0,0,255), 3)
     else:
-        print_text(frame, "player 1 wins!")
+        cv.putText(flipped_frame, "X Player's Turn..", (200,50), cv.FONT_HERSHEY_COMPLEX, 1, (0,0,255), 3)
     sleep(2)
     cap.release()
     cv.destroyAllWindows()
@@ -154,9 +159,9 @@ top_right = [int(box_width * 5 / 2), int(box_height / 2) + text_height, 0]
 middle_left = [int(box_width / 2), int(box_height * 3 / 2) + text_height //2, 0]
 middle_center = [int(box_width * 3 / 2), int(box_height * 3 / 2) + text_height //2, 0]
 middle_right = [int(box_width * 5 / 2), int(box_height * 3 / 2) + text_height //2, 0]
-bottom_left = [int(box_width / 2), int(box_height * 5 / 2) + text_height, 0]
-bottom_center = [int(box_width * 3 / 2), int(box_height * 5 / 2) + text_height, 0]
-bottom_right = [int(box_width * 5 / 2), int(box_height * 5 / 2) + text_height, 0]
+bottom_left = [int(box_width / 2), int(box_height * 5 / 2) + text_height-50, 0]
+bottom_center = [int(box_width * 3 / 2), int(box_height * 5 / 2) + text_height-50, 0]
+bottom_right = [int(box_width * 5 / 2), int(box_height * 5 / 2) + text_height-50, 0]
 pin = [
     [top_left, top_center, top_right],
     [middle_left, middle_center, middle_right],
@@ -164,12 +169,13 @@ pin = [
 ]
 
 def predict():
-    #if (current_time - last_prediction_time)>=2:
             results = model.predict(
             source=raw_flipped_frame, save=True, imgsz=640, conf=0.8
             )
             boxes_num = len(results[0].boxes)
-            print (boxes_num)
+            if boxes_num == 0:
+                return -1,-1, True
+            #print (boxes_num)
             for r in results:
                     coordinates=r.boxes.xywh.cpu().numpy()
                     classes_label=r.boxes.cls.cpu().numpy()
@@ -183,20 +189,20 @@ def predict():
                             name = model.names[id]
                             x_center = coordinates[i][0]
                             y_center = coordinates[i][1]
-                            #print (name,x_center,y_center)
                             i+=1
                             #write after this line directly the logic to be done as the following pseudo code and do not write after the dots
-                            # if name = x
-            #last_prediction_time = current_time
-            if i != 0:
-                if name == 'x':
-                    return int(x_center), int(y_center), True
-                else:
-                    return int(x_center), int(y_center), False
-            else:
-                return -1,-1, True
+                            if name == 'x' and x_player1:
+                                set_turn()
+                                return int(x_center), int(y_center), True
+                            elif name == 'o'and (not x_player1):
+                                set_turn()
+                                return int(x_center), int(y_center), False
+                            else :
+                                return -1, -1, True
+                            
+                            
 start = int(time())
-Is_player1 = True
+
 while True:
     isTrue, frame = cap.read() #read the frames from the video
     if isTrue and frame is not None: # if there is a frame
@@ -205,10 +211,11 @@ while True:
         raw_flipped_frame = flipped_frame.copy() # used by model without any drawing
         draw_grid(flipped_frame)
         flipped_frame, start = print_timer(flipped_frame, start)
-        Is_player1, condition = turn(flipped_frame, Is_player1)
         x = -1
         y = -1
         player = True
+        condition = count_down(flipped_frame)
+        get_turn()
         if condition:
             x, y, player = predict()
         draw_x(flipped_frame,x,y, player)
